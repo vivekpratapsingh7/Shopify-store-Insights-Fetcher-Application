@@ -100,10 +100,7 @@ def extract_text_from_url(url: str) -> str:
         return ""
 
 def try_products_json(base_url: str):
-    """
-    Attempt to fetch products from /products.json (Shopify common endpoint).
-    Try ?limit=250. Return list of product dicts or empty.
-    """
+    
     products = []
     tried_urls = [
         urljoin(base_url, "/products.json?limit=250"),
@@ -175,30 +172,30 @@ def find_policy_pages(links: Dict[str,str]):
     return privacy, returns
 
 def extract_faqs_from_page(soup: BeautifulSoup):
-    # common structure: sections with question/answer, accordions, dl dt/dd, lists
+   
     faqs = []
-    # search for elements with 'faq' in class or id
+   
     candidates = soup.find_all(attrs={"class": re.compile("faq", re.I)}) + soup.find_all(attrs={"id": re.compile("faq", re.I)})
     for cand in candidates:
-        # find pairs in this block
+      
         questions = cand.find_all(['h2','h3','h4','dt','summary'])
         for q in questions:
             q_text = q.get_text(strip=True)
-            # find next sibling answer
+            
             nxt = q.find_next_sibling()
             a_text = ""
             if nxt:
                 a_text = nxt.get_text(" ", strip=True)
             else:
-                # fallback: sibling within parent
+               
                 parent = q.parent
                 if parent:
                     a_text = parent.get_text(" ", strip=True).replace(q_text, "").strip()
             if q_text:
                 faqs.append({"q": q_text, "a": a_text})
-    # fallback: look for question/answer pairs by common patterns
+    
     if not faqs:
-        # find all details tags
+       
         for det in soup.find_all("details"):
             summary = det.find("summary")
             q_text = summary.get_text(strip=True) if summary else ""
@@ -213,7 +210,7 @@ def extract_brand_context(website_url: str) -> BrandContext:
     base = normalize_base(website_url)
     logger.info(f"Extracting for {website_url} (base {base})")
 
-    # 1) fetch homepage
+    #fetch homepage
     try:
         resp = safe_get(website_url)
     except Exception as e:
@@ -228,7 +225,7 @@ def extract_brand_context(website_url: str) -> BrandContext:
     products_raw = try_products_json(base)
     products = [Product(**p) for p in products_raw]
 
-    # 3) hero products: find product links on home page
+    # 3) hero products
     home_links = set()
     for a in soup.find_all("a", href=True):
         href = a["href"]
@@ -251,7 +248,7 @@ def extract_brand_context(website_url: str) -> BrandContext:
             hero_products.append(found)
 
 
-    # 4) nav links (important pages)
+    # 4) nav links 
     nav_links = extract_nav_links(soup, base)
     privacy_url, returns_url = find_policy_pages(nav_links)
 
@@ -389,7 +386,7 @@ def extract(req: ExtractRequest):
         brand = extract_brand_context(str(req.website_url)) 
         return brand
     except HTTPException as he:
-        # pass through
+        
         raise he
     except Exception as e:
         logger.exception("Unhandled error")
@@ -399,5 +396,5 @@ def extract(req: ExtractRequest):
 def root():
     return {
         "message": "Shopify Insights Fetcher. POST /extract { website_url }",
-        "notes": "This service scrapes stores (without using official Shopify API) and returns a Brand Context JSON."
+        
     }
